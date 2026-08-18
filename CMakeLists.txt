@@ -13,6 +13,8 @@ set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/json/include)
 
+add_subdirectory(external/SDL)
+
 add_executable(DiffusionApp main.cpp)
 
 if(MSVC)
@@ -20,3 +22,7 @@ if(MSVC)
 else()
     target_compile_options(DiffusionApp PRIVATE -Wall -Wextra -pedantic -O3)
 endif()
+
+# Ensure SDL3 include path is visible to DiffusionApp
+target_include_directories(DiffusionApp PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/external/SDL/include")
+

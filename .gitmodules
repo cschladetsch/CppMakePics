@@ -7,3 +7,6 @@
 [submodule "external/CppLogiMake"]
 	path = external/CppLogiMake
 	url = https://github.com/cschladetsch/CppLogiMake.git
+[submodule "external/SDL"]
+	path = external/SDL
+	url = https://github.com/libsdl-org/SDL.git

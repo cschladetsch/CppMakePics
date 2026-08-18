@@ -1,0 +1,6 @@
+{
+    "alternative_model": "flux-schnell-v1",
+    "guidance_scale": 8.0,
+    "inference_steps": 30,
+    "model_name": "stable-diffusion-xl-base"
+}

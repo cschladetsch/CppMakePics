@@ -4,6 +4,8 @@
 
 // Bypass MSVC STL compiler version check for Clang 18
 #define _ALLOW_COMPILER_AND_STL_VERSION_MISMATCH
+#define SDL_MAIN_HANDLED
+#include <SDL3/SDL.h>
 
 #include <iostream>
 #include <fstream>
@@ -12,9 +14,10 @@
 #include <string>
 #include <string_view>
 #include <mutex>
+#include <SDL3/SDL.h>
 
 // Include nlohmann/json from local external directory path layout
-#include "external/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 
 // Forward declaration / stub namespace for CppLocalLlmCodeAssist
 namespace cpp_llm {
@@ -154,3 +157,4 @@ int main(int, char*[]) {
 
     return 0;
 }
+
