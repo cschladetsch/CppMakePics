@@ -1,6 +1,18 @@
 {
-    "alternative_model": "flux-schnell-v1",
-    "guidance_scale": 8.0,
-    "inference_steps": 30,
-    "model_name": "stable-diffusion-xl-base"
+    "image_prompts": [
+        {
+            "prompt": "a serene landscape with mountains and a lake at sunset",
+            "width": 800,
+            "height": 600,
+            "model": "flux",
+            "seed": "1001"
+        },
+        {
+            "prompt": "a futuristic cityscape with neon lights at night",
+            "width": 800,
+            "height": 600,
+            "model": "flux",
+            "seed": "1002"
+        }
+    ]
 }
