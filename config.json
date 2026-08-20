@@ -13,6 +13,13 @@
             "height": 600,
             "model": "flux",
             "seed": "1002"
+        },
+        {
+            "prompt": "an Egyptian Goddess naked",
+            "width": 800,
+            "height": 600,
+            "model": "flux",
+            "seed": "1003"
         }
     ]
 }

@@ -7,6 +7,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define SDL_MAIN_HANDLED
 #include <SDL3/SDL.h>
+#include <cstring>
+#include <optional>
 
 #include "image_gen.hpp"
 
@@ -18,13 +20,27 @@
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
-int main(int, char*[]) {
-    HttpClient::init_curl();
+// ---- Forward declaration of test runner ----
+void run_tests();
+
+int main(int argc, char* argv[]) {
+    bool test_mode = false;
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], "--test") == 0 ||
+            std::strcmp(argv[i], "-t") == 0 ||
+            std::strcmp(argv[i], "--run-tests") == 0) {
+            test_mode = true;
+            break;
+        }
+    }
+
     std::cout << "[App] Starting DiffusionApp...\n";
     std::cout << std::flush;
 
-    std::cout << "[App] curl init done.\n";
-    std::cout << std::flush;
+    if (test_mode) {
+        run_tests();
+        return 0;
+    }
 
     // ---- Read config.json ----
     std::string config_path = "config.json";
@@ -115,7 +131,7 @@ int main(int, char*[]) {
         std::string latest;
         for (const auto& entry : fs::directory_iterator(dir)) {
             std::string ext = entry.path().extension().string();
-            if (ext == ".png" || ext == ".jpg" || ext == ".jpeg") {
+            if (ext == ".ppm" || ext == ".png" || ext == ".jpg" || ext == ".jpeg") {
                 std::string path = entry.path().string();
                 if (latest.empty() || fs::last_write_time(path) > fs::last_write_time(latest))
                     latest = path;
@@ -217,7 +233,6 @@ int main(int, char*[]) {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-    HttpClient::cleanup_curl();
     std::cout << "\n[App] Exited.\n";
     return 0;
 }
