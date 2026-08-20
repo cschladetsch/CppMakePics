@@ -1,8 +1,12 @@
-# tests/CMakeLists.txt — Unit tests with GTest, output to bin/tests/
+// ===========================================================================
+// tests/CMakeLists.txt — Unit tests output to bin/tests/
+// No GTest dependency — builds a standalone test binary.
+// ===========================================================================
 
 add_executable(TestRunner
     image_gen_tests.cpp
     ../src/image_gen.cpp
+    ../src/test_stub.cpp
 )
 
 target_include_directories(TestRunner PRIVATE
@@ -13,7 +17,6 @@ target_include_directories(TestRunner PRIVATE
 )
 
 target_link_libraries(TestRunner PRIVATE
-    GTest::gtest_main
     SDL3-shared
 )
 
@@ -27,8 +30,3 @@ add_custom_command(TARGET TestRunner POST_BUILD
     $<TARGET_FILE:SDL3-shared>
     $<TARGET_FILE_DIR:TestRunner>
 )
-
-# Register tests with CTest via gtest_discover_tests in test mode,
-# but for build we just compile the binary. Use a simple approach.
-enable_testing()
-add_test(NAME TestRunner COMMAND TestRunner)

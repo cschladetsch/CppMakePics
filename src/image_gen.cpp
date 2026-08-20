@@ -126,22 +126,60 @@ std::optional<std::string> ImageGenerator::generate(
     auto colors = palette_from_hash(base_hash, 6);
 
     std::vector<RGB> pixels(width * height);
-    int band_height = std::max(1, height / 6);
+
+    // Center-based radial layout: distances from center determine color band
+    float cx = width / 2.0f;
+    float cy = height / 2.0f;
+    float max_dist = std::sqrt(cx * cx + cy * cy);
 
     for (int y = 0; y < height; ++y) {
-        int band = std::min(y / band_height, 5);
-        RGB base = colors[band];
-
-        float t = static_cast<float>(y % band_height) / band_height;
-
         for (int x = 0; x < width; ++x) {
-            float tx = static_cast<float>(x) / width;
-            int r = static_cast<int>(base.r * (1.0f - t * 0.3f) + 50 * tx);
-            int g = static_cast<int>(base.g * (1.0f - t * 0.3f) + 70 * (1.0f - tx));
-            int b = static_cast<int>(base.b * (1.0f - t * 0.3f) + 90 * tx * (1.0f - tx));
+            float dx = (x - cx) / cx;
+            float dy = (y - cy) / cy;
+            float dist = std::sqrt(dx * dx + dy * dy);   // 0 at center, ~1.4 at corners
+
+            // Which color band: use angle + distance for variety
+            float angle = std::atan2(dy, dx);            // -PI..PI
+            float band_raw = (angle / (2.0f * 3.14159f) + 0.5f) * 5.0f + dist * 3.0f;
+            int band = std::clamp(static_cast<int>(band_raw) % 6, 0, 5);
+
+            // Blend between adjacent colors for smooth transitions
+            int b0 = band % 6;
+            int b1 = (band + 1) % 6;
+            float blend = band_raw - static_cast<int>(band_raw);
+            if (blend < 0) blend = 0;
+            if (blend > 1) blend = 1;
+
+            RGB c0 = colors[b0];
+            RGB c1 = colors[b1];
+
+            // distance-based vignette: darker at corners
+            float vignette = 1.0f - dist * 0.4f;
+            if (vignette < 0.3f) vignette = 0.3f;
+
+            // Radial falloff from center: brighter in middle
+            float radial = 1.0f - std::pow(dist * 0.7f, 2.0f);
+            if (radial < 0.4f) radial = 0.4f;
+
+            // Combine: base color blended + vignette + radial
+            float bright = radial * vignette;
+
+            int r = static_cast<int>((c0.r * (1.0f - blend) + c1.r * blend) * bright);
+            int g = static_cast<int>((c0.g * (1.0f - blend) + c1.g * blend) * bright);
+            int b = static_cast<int>((c0.b * (1.0f - blend) + c1.b * blend) * bright);
+
+            // Add subtle noise for texture
+            std::uint64_t px_hash = base_hash ^ (static_cast<std::uint64_t>(y) << 32) ^ static_cast<std::uint64_t>(x);
+            std::mt19937 pix_rng(static_cast<unsigned int>(px_hash));
+            std::uniform_int_distribution<int> noise_dist(-12, 12);
+            r += noise_dist(pix_rng);
+            g += noise_dist(pix_rng);
+            b += noise_dist(pix_rng);
+
             r = std::clamp(r, 0, 255);
             g = std::clamp(g, 0, 255);
             b = std::clamp(b, 0, 255);
+
             pixels[y * width + x] = {
                 static_cast<std::uint8_t>(r),
                 static_cast<std::uint8_t>(g),

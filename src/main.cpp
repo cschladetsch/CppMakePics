@@ -146,10 +146,14 @@ int main(int argc, char* argv[]) {
         SDL_Surface* surface = SDL_LoadSurface(latest_image_path.c_str());
         if (surface) {
             image_texture = SDL_CreateTextureFromSurface(renderer, surface);
+            if (!image_texture) {
+                std::cerr << "[SDL] CreateTexture failed: " << SDL_GetError() << "\n";
+            } else {
+                std::cout << "[SDL] Loaded: " << latest_image_path << " (" << surface->w << "x" << surface->h << ")\n";
+            }
             SDL_DestroySurface(surface);
-            std::cout << "[SDL] Loaded: " << latest_image_path << "\n";
         } else {
-            std::cerr << "[SDL] Load failed: " << SDL_GetError() << "\n";
+            std::cerr << "[SDL] Load failed: " << SDL_GetError() << " for " << latest_image_path << "\n";
         }
     }
 
@@ -195,8 +199,14 @@ int main(int argc, char* argv[]) {
                 SDL_Surface* surface = SDL_LoadSurface(latest_image_path.c_str());
                 if (surface) {
                     image_texture = SDL_CreateTextureFromSurface(renderer, surface);
+                    if (!image_texture) {
+                        std::cerr << "[SDL] Reload texture failed: " << SDL_GetError() << "\n";
+                    } else {
+                        std::cout << "[SDL] Reloaded: " << latest_image_path << " (" << surface->w << "x" << surface->h << ")\n";
+                    }
                     SDL_DestroySurface(surface);
-                    std::cout << "[SDL] Reloaded: " << latest_image_path << "\n";
+                } else {
+                    std::cerr << "[SDL] Reload load failed: " << SDL_GetError() << " for " << latest_image_path << "\n";
                 }
             }
         }
