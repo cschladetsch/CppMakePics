@@ -1,7 +1,7 @@
-// ===========================================================================
-// tests/CMakeLists.txt — Unit tests output to bin/tests/
-// No GTest dependency — builds a standalone test binary.
-// ===========================================================================
+# ===========================================================================
+# tests/CMakeLists.txt — Unit tests output to bin/tests/
+# No GTest dependency — builds a standalone test binary.
+# ===========================================================================
 
 add_executable(TestRunner
     image_gen_tests.cpp
