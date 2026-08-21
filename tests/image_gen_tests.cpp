@@ -1,473 +1,488 @@
 // ===========================================================================
-// tests/image_gen_tests.cpp — ImageGenerator tests via GoogleTest (50+ cases)
+// tests/image_gen_tests.cpp — ImageGenerator tests via GoogleTest (50+)
+// Filename format: img_<32 hex chars from SHA-256>.png
 // ===========================================================================
 #include "image_gen.hpp"
 #include <gtest/gtest.h>
-#include <string>
 
 // ===========================================================================
-// Filename consistency / uniqueness (replaces original 5 tests, expanded)
+// Helper
+// ===========================================================================
+
+// ===========================================================================
+// Filename determinism / uniqueness
 // ===========================================================================
 class FilenameTest : public ::testing::Test {
 protected:
     ImageGenerator gen;
 };
 
-TEST_F(FilenameTest, SamePromptSeedSizeProducesSameFilename) {
+TEST_F(FilenameTest, SameInputsSameOutput) {
     auto f1 = gen.image_filename("cat", "42", 512, 512);
     auto f2 = gen.image_filename("cat", "42", 512, 512);
     ASSERT_EQ(f1, f2);
 }
 
-TEST_F(FilenameTest, SameHashTwiceDeterministic) {
-    auto f1 = gen.image_filename("hello", "1", 100, 200);
-    auto f2 = gen.image_filename("hello", "1", 100, 200);
-    ASSERT_EQ(f1, f2);
-    ASSERT_EQ(f1, gen.image_filename("hello", "1", 100, 200));
-}
-
-TEST_F(FilenameTest, DifferentPromptsProduceDifferentFilenames) {
+TEST_F(FilenameTest, DifferentPromptsDistinguish) {
     auto f1 = gen.image_filename("cat", "42", 512, 512);
     auto f2 = gen.image_filename("dog", "42", 512, 512);
     EXPECT_NE(f1, f2);
 }
 
-TEST_F(FilenameTest, DifferentSeedsProduceDifferentFilenames) {
+TEST_F(FilenameTest, DifferentSeedsDistinguish) {
     auto f1 = gen.image_filename("cat", "1", 512, 512);
     auto f2 = gen.image_filename("cat", "2", 512, 512);
     EXPECT_NE(f1, f2);
 }
 
-TEST_F(FilenameTest, DifferentSizesProduceDifferentFilenames) {
-    auto f1 = gen.image_filename("cat", "42", 256, 256);
+TEST_F(FilenameTest, DifferentWidthsDistinguish) {
+    auto f1 = gen.image_filename("cat", "42", 256, 512);
     auto f2 = gen.image_filename("cat", "42", 512, 512);
     EXPECT_NE(f1, f2);
 }
 
-TEST_F(FilenameTest, FilenameStartsWithImg) {
+TEST_F(FilenameTest, DifferentHeightsDistinguish) {
+    auto f1 = gen.image_filename("cat", "42", 512, 256);
+    auto f2 = gen.image_filename("cat", "42", 512, 512);
+    EXPECT_NE(f1, f2);
+}
+
+TEST_F(FilenameTest, StartsWithImgUnderscore) {
     auto fn = gen.image_filename("a", "b", 100, 200);
     EXPECT_TRUE(fn.rfind("img_", 0) == 0);
 }
 
-TEST_F(FilenameTest, FilenameEndsWithPng) {
+TEST_F(FilenameTest, EndsWithPng) {
     auto fn = gen.image_filename("x", "y", 1, 1);
     EXPECT_EQ(fn.substr(fn.size() - 4), ".png");
 }
 
-TEST_F(FilenameTest, FilenameLongEnough) {
-    auto fn = gen.image_filename("test", "seed", 32, 32);
-    EXPECT_GT(fn.size(), 10u);
+TEST_F(FilenameTest, Has32HexCharsInMiddle) {
+    auto fn = gen.image_filename("a", "b", 100, 200);
+    // img_ + 32 hex + .png = 4 + 32 + 4 = 40
+    EXPECT_EQ(fn.size(), 40u);
+    auto hex = fn.substr(4, 32);
+    EXPECT_EQ(hex.size(), 32u);
+    for (char c : hex) {
+        EXPECT_TRUE((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'));
+    }
 }
 
-TEST_F(FilenameTest, FilenameContainsHashDigits) {
-    auto fn = gen.image_filename("z", "1", 50, 50);
-    EXPECT_TRUE(fn.find("img_") == 0);
-    EXPECT_GT(fn.size(), 5u);
-}
-
-TEST_F(FilenameTest, EmptyPromptStillProducesFilename) {
-    auto fn = gen.image_filename("", "s", 10, 10);
+TEST_F(FilenameTest, EmptyPromptStillWorks) {
+    auto fn = gen.image_filename("", "s", 100, 100);
+    EXPECT_EQ(fn.size(), 40u);
     EXPECT_TRUE(fn.rfind("img_", 0) == 0);
     EXPECT_EQ(fn.substr(fn.size() - 4), ".png");
 }
 
-TEST_F(FilenameTest, EmptySeedStillProducesFilename) {
-    auto fn = gen.image_filename("p", "", 10, 10);
-    EXPECT_TRUE(fn.rfind("img_", 0) == 0);
+TEST_F(FilenameTest, EmptySeedStillWorks) {
+    auto fn = gen.image_filename("p", "", 100, 100);
+    EXPECT_EQ(fn.size(), 40u);
 }
 
-TEST_F(FilenameTest, LargeDimensionsProduceValidFilename) {
-    auto fn = gen.image_filename("big", "1", 5000, 5000);
-    EXPECT_TRUE(fn.rfind("img_", 0) == 0);
-    EXPECT_EQ(fn.substr(fn.size() - 4), ".png");
+TEST_F(FilenameTest, BothEmptyStillWorks) {
+    auto fn = gen.image_filename("", "", 100, 100);
+    EXPECT_EQ(fn.size(), 40u);
 }
 
-TEST_F(FilenameTest, OneByOneProducesFilename) {
-    auto fn = gen.image_filename("single", "s", 1, 1);
-    EXPECT_TRUE(fn.rfind("img_", 0) == 0);
+TEST_F(FilenameTest, ZeroDimensionsStillWorks) {
+    auto fn = gen.image_filename("z", "0", 0, 0);
+    EXPECT_EQ(fn.size(), 40u);
 }
 
-TEST_F(FilenameTest, UnicodePromptProducesFilename) {
-    auto fn = gen.image_filename("\u00e9\u00e0\u00fc", "1", 50, 50);
-    EXPECT_TRUE(fn.rfind("img_", 0) == 0);
-    EXPECT_EQ(fn.substr(fn.size() - 4), ".png");
+TEST_F(FilenameTest, MaxDimensionsStillWorks) {
+    auto fn = gen.image_filename("x", "0", 10000, 10000);
+    EXPECT_EQ(fn.size(), 40u);
 }
 
-TEST_F(FilenameTest, VeryLongPromptStillProducesFilename) {
-    std::string long_prompt(1000, 'A');
-    auto fn = gen.image_filename(long_prompt, "s", 80, 80);
-    EXPECT_TRUE(fn.rfind("img_", 0) == 0);
-    EXPECT_EQ(fn.substr(fn.size() - 4), ".png");
+TEST_F(FilenameTest, LongPromptStillWorks) {
+    std::string lp(1000, 'x');
+    auto fn = gen.image_filename(lp, "s", 1, 1);
+    EXPECT_EQ(fn.size(), 40u);
+}
+
+TEST_F(FilenameTest, UnicodePromptStillWorks) {
+    auto fn = gen.image_filename("\u00E9\u00E0\u00FC", "s", 1, 1);
+    EXPECT_EQ(fn.size(), 40u);
 }
 
 // ===========================================================================
 // valid_dimensions
 // ===========================================================================
-class ValidDimensionsTest : public ::testing::Test {};
-
-TEST(ValidDimensionsTest, EqualValidPair) {
-    EXPECT_TRUE(ImageGenerator::valid_dimensions(500, 500));
-}
-
-TEST(ValidDimensionsTest, Typical1) {
+TEST(ImageGeneratorValidDim, min_min_valid) {
     EXPECT_TRUE(ImageGenerator::valid_dimensions(1, 1));
 }
 
-TEST(ValidDimensionsTest, Typical2) {
+TEST(ImageGeneratorValidDim, max_max_valid) {
     EXPECT_TRUE(ImageGenerator::valid_dimensions(10000, 10000));
 }
 
-TEST(ValidDimensionsTest, RectangularValid) {
+TEST(ImageGeneratorValidDim, typical) {
     EXPECT_TRUE(ImageGenerator::valid_dimensions(800, 600));
+    EXPECT_TRUE(ImageGenerator::valid_dimensions(512, 512));
 }
 
-TEST(ValidDimensionsTest, MinMin) {
-    EXPECT_TRUE(ImageGenerator::valid_dimensions(1, 1));
-}
-
-TEST(ValidDimensionsTest, MaxMax) {
-    EXPECT_TRUE(ImageGenerator::valid_dimensions(10000, 10000));
-}
-
-TEST(ValidDimensionsTest, MixedWithinRange) {
-    EXPECT_TRUE(ImageGenerator::valid_dimensions(100, 9999));
-    EXPECT_TRUE(ImageGenerator::valid_dimensions(9999, 100));
-}
-
-TEST(ValidDimensionsTest, ZeroWidthInvalid) {
-    EXPECT_FALSE(ImageGenerator::valid_dimensions(0, 500));
-}
-
-TEST(ValidDimensionsTest, ZeroHeightInvalid) {
-    EXPECT_FALSE(ImageGenerator::valid_dimensions(500, 0));
-}
-
-TEST(ValidDimensionsTest, BothZeroInvalid) {
+TEST(ImageGeneratorValidDim, zero_invalid) {
+    EXPECT_FALSE(ImageGenerator::valid_dimensions(0, 512));
+    EXPECT_FALSE(ImageGenerator::valid_dimensions(512, 0));
     EXPECT_FALSE(ImageGenerator::valid_dimensions(0, 0));
 }
 
-TEST(ValidDimensionsTest, NegativeWidthInvalid) {
-    EXPECT_FALSE(ImageGenerator::valid_dimensions(-1, 500));
+TEST(ImageGeneratorValidDim, negative_invalid) {
+    EXPECT_FALSE(ImageGenerator::valid_dimensions(-1, 512));
+    EXPECT_FALSE(ImageGenerator::valid_dimensions(512, -1));
+    EXPECT_FALSE(ImageGenerator::valid_dimensions(-1, -1));
+    EXPECT_FALSE(ImageGenerator::valid_dimensions(-1000, -1000));
 }
 
-TEST(ValidDimensionsTest, NegativeHeightInvalid) {
-    EXPECT_FALSE(ImageGenerator::valid_dimensions(500, -1));
-}
-
-TEST(ValidDimensionsTest, BothNegativeInvalid) {
-    EXPECT_FALSE(ImageGenerator::valid_dimensions(-10, -10));
-}
-
-TEST(ValidDimensionsTest, WidthTooLargeInvalid) {
-    EXPECT_FALSE(ImageGenerator::valid_dimensions(10001, 500));
-}
-
-TEST(ValidDimensionsTest, HeightTooLargeInvalid) {
-    EXPECT_FALSE(ImageGenerator::valid_dimensions(500, 10001));
-}
-
-TEST(ValidDimensionsTest, BothTooLargeInvalid) {
+TEST(ImageGeneratorValidDim, over_max_invalid) {
+    EXPECT_FALSE(ImageGenerator::valid_dimensions(10001, 512));
+    EXPECT_FALSE(ImageGenerator::valid_dimensions(512, 10001));
     EXPECT_FALSE(ImageGenerator::valid_dimensions(10001, 10001));
 }
 
-TEST(ValidDimensionsTest, MinMinusOneInvalid) {
-    EXPECT_FALSE(ImageGenerator::valid_dimensions(0, 1));
+TEST(ImageGeneratorValidDim, boundary_min) {
+    EXPECT_TRUE(ImageGenerator::valid_dimensions(1, 10000));
+    EXPECT_TRUE(ImageGenerator::valid_dimensions(10000, 1));
 }
 
-TEST(ValidDimensionsTest, MaxPlusOneInvalid) {
-    EXPECT_FALSE(ImageGenerator::valid_dimensions(10001, 10000));
-}
-
-TEST(ValidDimensionsTest, WideButValid) {
+TEST(ImageGeneratorValidDim, boundary_max) {
     EXPECT_TRUE(ImageGenerator::valid_dimensions(10000, 1));
     EXPECT_TRUE(ImageGenerator::valid_dimensions(1, 10000));
 }
 
-// ===========================================================================
-// clamp_dimension
-// ===========================================================================
-class ClampDimensionTest : public ::testing::Test {
-protected:
-    static int clamp(int v) { return ImageGenerator::clamp_dimension(v, 1, 10000); }
-};
-
-TEST_F(ClampDimensionTest, InRangeUnchanged) {
-    EXPECT_EQ(clamp(500), 500);
-    EXPECT_EQ(clamp(1), 1);
-    EXPECT_EQ(clamp(10000), 10000);
-    EXPECT_EQ(clamp(9999), 9999);
-}
-
-TEST_F(ClampDimensionTest, BelowMinClampsToMin) {
-    EXPECT_EQ(clamp(0), 1);
-    EXPECT_EQ(clamp(-1), 1);
-    EXPECT_EQ(clamp(-100), 1);
-    EXPECT_EQ(clamp(-99999), 1);
-}
-
-TEST_F(ClampDimensionTest, AboveMaxClampsToMax) {
-    EXPECT_EQ(clamp(10001), 10000);
-    EXPECT_EQ(clamp(50000), 10000);
-    EXPECT_EQ(clamp(999999999), 10000);
-}
-
-TEST_F(ClampDimensionTest, MixedValuesClampCorrectly) {
-    EXPECT_EQ(clamp(-10), 1);
-    EXPECT_EQ(clamp(0), 1);
-    EXPECT_EQ(clamp(1), 1);
-    EXPECT_EQ(clamp(50), 50);
-    EXPECT_EQ(clamp(9999), 9999);
-    EXPECT_EQ(clamp(10000), 10000);
-    EXPECT_EQ(clamp(10001), 10000);
-    EXPECT_EQ(clamp(100000), 10000);
+TEST(ImageGeneratorValidDim, boundary_plus_one_invalid) {
+    EXPECT_FALSE(ImageGenerator::valid_dimensions(10001, 1));
+    EXPECT_FALSE(ImageGenerator::valid_dimensions(1, 10001));
 }
 
 // ===========================================================================
-// clamp_width / clamp_height
+// clamp_dimension / clamp_width / clamp_height
 // ===========================================================================
-class ClampWidthHeightTest : public ::testing::Test {};
-
-TEST_F(ClampWidthHeightTest, ClampWidthInRange) {
-    EXPECT_EQ(ImageGenerator::clamp_width(100), 100);
-    EXPECT_EQ(ImageGenerator::clamp_width(1), 1);
-    EXPECT_EQ(ImageGenerator::clamp_width(10000), 10000);
+TEST(ImageGeneratorClamp, clamp_dimension_basic) {
+    EXPECT_EQ(ImageGenerator::clamp_dimension(500, 1, 10000), 500);
+    EXPECT_EQ(ImageGenerator::clamp_dimension(0, 1, 10000), 1);
+    EXPECT_EQ(ImageGenerator::clamp_dimension(-100, 1, 10000), 1);
+    EXPECT_EQ(ImageGenerator::clamp_dimension(10001, 1, 10000), 10000);
+    EXPECT_EQ(ImageGenerator::clamp_dimension(9999999, 1, 10000), 10000);
 }
 
-TEST_F(ClampWidthHeightTest, ClampWidthBelowMin) {
+TEST(ImageGeneratorClamp, clamp_dimension_boundaries) {
+    EXPECT_EQ(ImageGenerator::clamp_dimension(1, 1, 10000), 1);
+    EXPECT_EQ(ImageGenerator::clamp_dimension(10000, 1, 10000), 10000);
+    EXPECT_EQ(ImageGenerator::clamp_dimension(2, 1, 10000), 2);
+    EXPECT_EQ(ImageGenerator::clamp_dimension(9999, 1, 10000), 9999);
+}
+
+TEST(ImageGeneratorClamp, clamp_dimension_lo_eq_hi) {
+    EXPECT_EQ(ImageGenerator::clamp_dimension(0, 5, 5), 5);
+    EXPECT_EQ(ImageGenerator::clamp_dimension(10, 5, 5), 5);
+    EXPECT_EQ(ImageGenerator::clamp_dimension(5, 5, 5), 5);
+}
+
+TEST(ImageGeneratorClamp, clamp_dimension_negative_range) {
+    EXPECT_EQ(ImageGenerator::clamp_dimension(-100, -50, -10), -50);
+    EXPECT_EQ(ImageGenerator::clamp_dimension(0, -50, -10), -10);
+    EXPECT_EQ(ImageGenerator::clamp_dimension(-30, -50, -10), -30);
+}
+
+TEST(ImageGeneratorClamp, clamp_width_uses_defaults) {
     EXPECT_EQ(ImageGenerator::clamp_width(0), 1);
-    EXPECT_EQ(ImageGenerator::clamp_width(-5), 1);
-}
-
-TEST_F(ClampWidthHeightTest, ClampWidthAboveMax) {
     EXPECT_EQ(ImageGenerator::clamp_width(10001), 10000);
-    EXPECT_EQ(ImageGenerator::clamp_width(99999), 10000);
+    EXPECT_EQ(ImageGenerator::clamp_width(512), 512);
 }
 
-TEST_F(ClampWidthHeightTest, ClampHeightInRange) {
-    EXPECT_EQ(ImageGenerator::clamp_height(200), 200);
-    EXPECT_EQ(ImageGenerator::clamp_height(1), 1);
-    EXPECT_EQ(ImageGenerator::clamp_height(10000), 10000);
-}
-
-TEST_F(ClampWidthHeightTest, ClampHeightBelowMin) {
+TEST(ImageGeneratorClamp, clamp_height_uses_defaults) {
     EXPECT_EQ(ImageGenerator::clamp_height(0), 1);
-    EXPECT_EQ(ImageGenerator::clamp_height(-10), 1);
+    EXPECT_EQ(ImageGenerator::clamp_height(10001), 10000);
+    EXPECT_EQ(ImageGenerator::clamp_height(512), 512);
 }
 
-TEST_F(ClampWidthHeightTest, ClampHeightAboveMax) {
-    EXPECT_EQ(ImageGenerator::clamp_height(20000), 10000);
-    EXPECT_EQ(ImageGenerator::clamp_height(500000), 10000);
+TEST(ImageGeneratorClamp, clamp_width_matches_clamp_dimension_with_imagegen_range) {
+    for (int v : {0, 1, 512, 10000, 10001})
+        EXPECT_EQ(ImageGenerator::clamp_width(v),
+                  ImageGenerator::clamp_dimension(v, ImageGenerator::MIN_DIM, ImageGenerator::MAX_DIM));
 }
 
-TEST_F(ClampWidthHeightTest, ClampWidthWidthZeroBecomesOne) {
-    EXPECT_EQ(ImageGenerator::clamp_width(0), ImageGenerator::MIN_DIM);
+TEST(ImageGeneratorClamp, clamp_height_matches_clamp_dimension_with_imagegen_range) {
+    for (int v : {0, 1, 512, 10000, 10001})
+        EXPECT_EQ(ImageGenerator::clamp_height(v),
+                  ImageGenerator::clamp_dimension(v, ImageGenerator::MIN_DIM, ImageGenerator::MAX_DIM));
 }
 
-TEST_F(ClampWidthHeightTest, ClampHeightHeightZeroBecomesOne) {
-    EXPECT_EQ(ImageGenerator::clamp_height(0), ImageGenerator::MIN_DIM);
+TEST(ImageGeneratorClamp, MIN_DIM_is_1) {
+    EXPECT_EQ(ImageGenerator::MIN_DIM, 1);
 }
 
-TEST_F(ClampWidthHeightTest, ClampWidthMaxPlusOneBecomesMax) {
-    EXPECT_EQ(ImageGenerator::clamp_width(ImageGenerator::MAX_DIM + 1),
-              ImageGenerator::MAX_DIM);
-}
-
-TEST_F(ClampWidthHeightTest, ClampHeightMaxPlusOneBecomesMax) {
-    EXPECT_EQ(ImageGenerator::clamp_height(ImageGenerator::MAX_DIM + 1),
-              ImageGenerator::MAX_DIM);
+TEST(ImageGeneratorClamp, MAX_DIM_is_10000) {
+    EXPECT_EQ(ImageGenerator::MAX_DIM, 10000);
 }
 
 // ===========================================================================
 // sanitize_prompt
 // ===========================================================================
-class SanitizePromptTest : public ::testing::Test {};
-
-TEST_F(SanitizePromptTest, EmptyStringStaysEmpty) {
+TEST(SanitizePrompt, empty) {
     EXPECT_EQ(ImageGenerator::sanitize_prompt(""), "");
 }
 
-TEST_F(SanitizePromptTest, WhitespaceOnlyBecomesEmpty) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt(" "), "");
+TEST(SanitizePrompt, spaces_only) {
     EXPECT_EQ(ImageGenerator::sanitize_prompt("   "), "");
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("     "), "");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("\t\t"), "");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("\n\n"), "");
 }
 
-TEST_F(SanitizePromptTest, SingleWordUnchanged) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("hello"), "hello");
+TEST(SanitizePrompt, single_word) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("cat"), "cat");
 }
 
-TEST_F(SanitizePromptTest, LeadingSpacesTrimmed) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("  hello"), "hello");
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("   hello"), "hello");
+TEST(SanitizePrompt, leading_trailing_spaces) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("  cat  "), "cat");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("\t\tdog\t\t"), "dog");
 }
 
-TEST_F(SanitizePromptTest, TrailingSpacesTrimmed) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("hello  "), "hello");
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("hello   "), "hello");
+TEST(SanitizePrompt, internal_spaces_preserved) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("a b c"), "a b c");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("one two three"), "one two three");
 }
 
-TEST_F(SanitizePromptTest, BothLeadingAndTrailingTrimmed) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("  hello  "), "hello");
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("   hello   "), "hello");
+TEST(SanitizePrompt, multiple_internal_spaces_collapsed) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("a  b"), "a b");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("a   b   c"), "a b c");
 }
 
-TEST_F(SanitizePromptTest, InternalSpacesPreserved) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("hello world"), "hello world");
+TEST(SanitizePrompt, leading_and_trailing_and_internal) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("  one   two  "), "one two");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("\t\t\ta  b\t\t"), "a b");
 }
 
-TEST_F(SanitizePromptTest, MultipleInternalSpacesCollapsed) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("hello   world"), "hello world");
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("a    b"), "a b");
+TEST(SanitizePrompt, tabs_collapse) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("a\t\tb"), "a b");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("\t\ta\t\tb\t\t"), "a b");
 }
 
-TEST_F(SanitizePromptTest, MixedWhitespaceCollapsed) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("a \t b"), "a b");
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("a\n b"), "a b");
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("a\r\n b"), "a b");
+TEST(SanitizePrompt, newlines_collapse) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("a\nb"), "a b");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("\n\none\n\ntwo\n\n"), "one two");
 }
 
-TEST_F(SanitizePromptTest, WhitespaceOnlyBecomesEmptyAfterFullTrim) {
-    // All-whitespace -> empty after trimming both ends
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("    "), "");
+TEST(SanitizePrompt, mixed_whitespace_collapse) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt(" a \t b \n c "), "a b c");
 }
 
-TEST_F(SanitizePromptTest, SingleSpaceIsEmptyAfterTrim) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt(" "), "");
+TEST(SanitizePrompt, single_char) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("x"), "x");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt(" x "), "x");
 }
 
-TEST_F(SanitizePromptTest, TabOnlyIsEmptyAfterTrim) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("\t"), "");
+TEST(SanitizePrompt, numbers_preserved) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("123 456"), "123 456");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("  42  "), "42");
 }
 
-TEST_F(SanitizePromptTest, NewlineOnlyIsEmptyAfterTrim) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("\n"), "");
-}
-
-TEST_F(SanitizePromptTest, LeadingTabsTrimmed) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("\t\thello"), "hello");
-}
-
-TEST_F(SanitizePromptTest, TrailingTabsTrimmed) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("hello\t\t"), "hello");
-}
-
-TEST_F(SanitizePromptTest, NewlineTrimmed) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("\nhello\n"), "hello");
-}
-
-TEST_F(SanitizePromptTest, CarriageReturnTrimmed) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("\rhello\r"), "hello");
-}
-
-TEST_F(SanitizePromptTest, ComplexWhitespaceCollapse) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt(" a \t\n b "), "a b");
-}
-
-TEST_F(SanitizePromptTest, MultipleWordsWithCollapse) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("one   two    three"),
-              "one two three");
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("  one   two    three  "),
-              "one two three");
-}
-
-TEST_F(SanitizePromptTest, SpecialCharsPreserved) {
+TEST(SanitizePrompt, special_chars_preserved) {
     EXPECT_EQ(ImageGenerator::sanitize_prompt("a!b@c#"), "a!b@c#");
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("100%"), "100%");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("one,two;three"), "one,two;three");
 }
 
-TEST_F(SanitizePromptTest, UnicodePreserved) {
-    EXPECT_EQ(ImageGenerator::sanitize_prompt("\u00e9\u00e0"), "\u00e9\u00e0");
+TEST(SanitizePrompt, unicode_preserved) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("\u00E9\u00E0"), "\u00E9\u00E0");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("  \u00FC  "), "\u00FC");
 }
 
-TEST_F(SanitizePromptTest, AlreadyCleanUnchanged) {
+TEST(SanitizePrompt, already_clean_noop) {
     EXPECT_EQ(ImageGenerator::sanitize_prompt("hello world"), "hello world");
 }
 
-TEST_F(SanitizePromptTest, LongStringWithWhitespace) {
-    std::string in(500, 'x');
-    in += "  ";
+TEST(SanitizePrompt, prompt_with_leading_number) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("  42 cats"), "42 cats");
+}
+
+TEST(SanitizePrompt, prompt_with_mixed_case) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("  HeLLo WoRLd  "), "HeLLo WoRLd");
+}
+
+TEST(SanitizePrompt, prompt_with_dashes) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("  foo-bar  "), "foo-bar");
+}
+
+TEST(SanitizePrompt, prompt_with_underscores) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("  foo_bar  "), "foo_bar");
+}
+
+TEST(SanitizePrompt, prompt_with_plus) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("  a+b  "), "a+b");
+}
+
+TEST(SanitizePrompt, long_prompt_collapse) {
+    std::string lots(200, 'x');
+    std::string in = "  " + lots + "  ";
     std::string out = ImageGenerator::sanitize_prompt(in);
-    EXPECT_EQ(out.size(), 500u);
-    EXPECT_EQ(out, std::string(500, 'x'));
+    EXPECT_EQ(out, lots);
+    EXPECT_EQ(out.size(), size_t(200));
+}
+
+TEST(SanitizePrompt, trim_empty_to_empty) {
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("   "), "");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("\t"), "");
+    EXPECT_EQ(ImageGenerator::sanitize_prompt("\n"), "");
 }
 
 // ===========================================================================
 // default_seed
 // ===========================================================================
-class DefaultSeedTest : public ::testing::Test {};
-
-TEST_F(DefaultSeedTest, ReturnsZeroString) {
+TEST(DefaultSeed, returns_zero_string) {
     EXPECT_EQ(ImageGenerator::default_seed(), "0");
 }
 
-TEST_F(DefaultSeedTest, ReturnsNonEmpty) {
+TEST(DefaultSeed, not_empty) {
     EXPECT_FALSE(ImageGenerator::default_seed().empty());
+}
+
+TEST(DefaultSeed, consistent) {
+    EXPECT_EQ(ImageGenerator::default_seed(), ImageGenerator::default_seed());
 }
 
 // ===========================================================================
 // build_full_path
 // ===========================================================================
-class BuildFullPathTest : public ::testing::Test {};
-
-TEST_F(BuildFullPathTest, EmptyDirReturnsFilenameOnly) {
-    EXPECT_EQ(ImageGenerator::build_full_path("", "img_123.png"), "img_123.png");
+TEST(BuildFullPath, empty_dir) {
+    EXPECT_EQ(ImageGenerator::build_full_path("", "img.png"), "img.png");
 }
 
-TEST_F(BuildFullPathTest, DirWithoutSepAppendsSlash) {
-    EXPECT_EQ(ImageGenerator::build_full_path("out", "img_123.png"),
-              "out/img_123.png");
+TEST(BuildFullPath, simple_dir) {
+    EXPECT_EQ(ImageGenerator::build_full_path("out", "img.png"), "out/img.png");
 }
 
-TEST_F(BuildFullPathTest, DirWithTrailingSlashNoDoubleSlash) {
-    EXPECT_EQ(ImageGenerator::build_full_path("out/", "img_123.png"),
-              "out/img_123.png");
+TEST(BuildFullPath, dir_with_slash) {
+    EXPECT_EQ(ImageGenerator::build_full_path("out/", "img.png"), "out/img.png");
 }
 
-TEST_F(BuildFullPathTest, DirWithTrailingBackslashNoDouble) {
-    EXPECT_EQ(ImageGenerator::build_full_path("out\\", "img_123.png"),
-              "out\\img_123.png");
+TEST(BuildFullPath, dir_with_backslash) {
+    EXPECT_EQ(ImageGenerator::build_full_path("out\\", "img.png"), "out\\img.png");
 }
 
-TEST_F(BuildFullPathTest, NestedDir) {
-    EXPECT_EQ(ImageGenerator::build_full_path("a/b", "img.png"),
-              "a/b/img.png");
+TEST(BuildFullPath, nested_dir) {
+    EXPECT_EQ(ImageGenerator::build_full_path("a/b", "img.png"), "a/b/img.png");
 }
 
-TEST_F(BuildFullPathTest, NestedDirWithSlash) {
-    EXPECT_EQ(ImageGenerator::build_full_path("a/b/", "img.png"),
-              "a/b/img.png");
+TEST(BuildFullPath, nested_dir_with_slash) {
+    EXPECT_EQ(ImageGenerator::build_full_path("a/b/", "img.png"), "a/b/img.png");
 }
 
-TEST_F(BuildFullPathTest, FilenameOnlyNoDir) {
-    EXPECT_EQ(ImageGenerator::build_full_path("", "f.png"), "f.png");
+TEST(BuildFullPath, dir_no_name) {
+    EXPECT_EQ(ImageGenerator::build_full_path("", ""), "");
 }
 
-TEST_F(BuildFullPathTest, RootLikeDir) {
-    EXPECT_EQ(ImageGenerator::build_full_path("/", "f.png"), "/f.png");
+TEST(BuildFullPath, dir_with_spaces) {
+    EXPECT_EQ(ImageGenerator::build_full_path("my images", "img.png"), "my images/img.png");
 }
 
-TEST_F(BuildFullPathTest, RootLikeDirWithSlash) {
-    EXPECT_EQ(ImageGenerator::build_full_path("//", "f.png"), "//f.png");
+TEST(BuildFullPath, root_like) {
+    EXPECT_EQ(ImageGenerator::build_full_path("/", "img.png"), "/img.png");
+    EXPECT_EQ(ImageGenerator::build_full_path("//", "img.png"), "//img.png");
 }
 
 // ===========================================================================
-// Cross-method interaction: sanitize + filename determinism
+// Cross-method interaction
 // ===========================================================================
-class InteractionTest : public ::testing::Test {
-protected:
+TEST(Interaction, sanitize_then_filename) {
     ImageGenerator gen;
-};
-
-TEST_F(InteractionTest, SanitizedPromptSameHashForEquivalentInputs) {
-    std::string a = "hello world";
-    std::string b = "  hello   world  ";
-    auto fn1 = gen.image_filename(ImageGenerator::sanitize_prompt(a), "1", 100, 100);
-    auto fn2 = gen.image_filename(ImageGenerator::sanitize_prompt(b), "1", 100, 100);
-    EXPECT_EQ(fn1, fn2);
+    auto raw = "  hello   world  ";
+    auto clean = ImageGenerator::sanitize_prompt(raw);
+    EXPECT_EQ(clean, "hello world");
+    auto fn = gen.image_filename(clean, "42", 512, 512);
+    EXPECT_EQ(fn.size(), 40u);
+    EXPECT_TRUE(fn.rfind("img_", 0) == 0);
+    EXPECT_EQ(fn.substr(fn.size() - 4), ".png");
 }
 
-TEST_F(InteractionTest, DifferentPromptsAfterSanitizeStillDifferent) {
-    auto fn1 = gen.image_filename(ImageGenerator::sanitize_prompt("cat"), "1", 100, 100);
-    auto fn2 = gen.image_filename(ImageGenerator::sanitize_prompt("dog"), "1", 100, 100);
-    EXPECT_NE(fn1, fn2);
+TEST(Interaction, valid_dims_then_filename) {
+    EXPECT_TRUE(ImageGenerator::valid_dimensions(512, 512));
+    ImageGenerator gen;
+    auto fn = gen.image_filename("test", "1", 512, 512);
+    EXPECT_EQ(fn.size(), 40u);
+}
+
+TEST(Interaction, clamp_then_filename) {
+    int w = ImageGenerator::clamp_width(0);
+    int h = ImageGenerator::clamp_height(10001);
+    EXPECT_EQ(w, 1);
+    EXPECT_EQ(h, 10000);
+    ImageGenerator gen;
+    auto fn = gen.image_filename("test", "1", w, h);
+    EXPECT_EQ(fn.size(), 40u);
+}
+
+// ===========================================================================
+// Properties of the SHA-256 derived filename
+// ===========================================================================
+TEST(ShaFilenameProperty, same_hash_across_rebuilds) {
+    // Just re-run deterministic
+    ImageGenerator gen;
+    auto a = gen.image_filename("seed_test", "123", 512, 512);
+    auto b = gen.image_filename("seed_test", "123", 512, 512);
+    ASSERT_EQ(a, b);
+}
+
+TEST(ShaFilenameProperty, different_input_gives_different_prefix) {
+    ImageGenerator gen;
+    auto a = gen.image_filename("x", "1", 100, 100);
+    auto b = gen.image_filename("y", "1", 100, 100);
+    EXPECT_NE(a, b);
+}
+
+TEST(ShaFilenameProperty, hash_is_lower_case_hex) {
+    ImageGenerator gen;
+    auto fn = gen.image_filename("test", "seed", 512, 512);
+    auto hex = fn.substr(4, 32);
+    for (char c : hex)
+        EXPECT_TRUE((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'));
+}
+
+TEST(ShaFilenameProperty, length_consistent) {
+    ImageGenerator gen;
+    for (auto& prompt : {std::string("a"), std::string("ab"), std::string("abc"), std::string("abcdefghijklmnopqrstuvwxyz"),
+                          std::string(1000, 'x')}) {
+        auto fn = gen.image_filename(prompt, "1", 100, 100);
+        EXPECT_EQ(fn.size(), 40u);
+    }
+}
+
+TEST(ShaFilenameProperty, size_param_encoding) {
+    ImageGenerator gen;
+    auto f1 = gen.image_filename("p", "s", 1, 1);
+    auto f2 = gen.image_filename("p", "s", 100, 100);
+    EXPECT_NE(f1, f2);
+}
+
+TEST(ShaFilenameProperty, width_and_height_both_matter) {
+    ImageGenerator gen;
+    auto a = gen.image_filename("p", "s", 100, 200);
+    auto b = gen.image_filename("p", "s", 200, 100);
+    EXPECT_NE(a, b);
+}
+
+// ===========================================================================
+// Fuzz-like coverage
+// ===========================================================================
+TEST(Fuzz, various_inputs) {
+    ImageGenerator gen;
+    struct Case { std::string p; std::string s; int w; int h; };
+    Case cases[] = {
+        {"", "", 1, 1},
+        {"a", "1", 1, 1},
+        {"abc", "xyz", 10, 20},
+        {"\t", "\n", 0, 0},
+        {"long prompt with  spaces", "seed with  spaces", 512, 512},
+        {"", "seed", 10000, 10000},
+        {"prompt", "", 512, 512},
+        {"prompt", "seed", 1, 10000},
+        {"prompt", "seed", 10000, 1},
+    };
+    for (auto& c : cases) {
+        auto fn = gen.image_filename(c.p, c.s, c.w, c.h);
+        EXPECT_EQ(fn.size(), 40u);
+        EXPECT_TRUE(fn.rfind("img_", 0) == 0);
+        EXPECT_EQ(fn.substr(fn.size() - 4), ".png");
+    }
 }

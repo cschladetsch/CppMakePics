@@ -5,23 +5,25 @@
 
 #include <algorithm>
 #include <cctype>
-#include <functional>
 #include <sstream>
 #include <string>
 
-// ---- filename generation (original) ----
+#include "sha256.hpp"
+
+// ---- filename generation (SHA-256 based) ----
 std::string ImageGenerator::image_filename(
     const std::string& prompt,
     const std::string& seed,
     int width,
     int height)
 {
-    std::hash<std::string> hasher;
-    std::size_t h = hasher(prompt + "|" + seed + "|" +
-                            std::to_string(width) + "x" + std::to_string(height));
     std::ostringstream oss;
-    oss << "img_" << h << ".png";
-    return oss.str();
+    oss << prompt << "|" << seed << "|"
+        << width << "x" << height;
+    std::string input = oss.str();
+    std::string hash = sha256::digest(input.data(), input.size());
+    // Use first 16 bytes (32 hex chars) of the SHA-256 hash as fingerprint
+    return "img_" + hash.substr(0, 32) + ".png";
 }
 
 // ---- dimension helpers ----
