@@ -2,4 +2,7 @@
 /target
 /bin/
 config.json
-
+/build_*
+imgui.ini
+.cache/
+images/
