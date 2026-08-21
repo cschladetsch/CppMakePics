@@ -1,8 +1,4 @@
-# ===========================================================================
-# tests/CMakeLists.txt — Unit tests output to bin/tests/
-# No GTest dependency — builds a standalone test binary.
-# ===========================================================================
-
+# tests/CMakeLists.txt — GoogleTest-based test runner, output to bin/tests/
 add_executable(TestRunner
     image_gen_tests.cpp
     ../src/image_gen.cpp
@@ -11,22 +7,16 @@ add_executable(TestRunner
 
 target_include_directories(TestRunner PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../external/SDL/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../external/json/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../external/SDL/src"
 )
 
 target_link_libraries(TestRunner PRIVATE
-    SDL3-shared
+    SDL3::SDL3
+    GTest::gtest
+    GTest::gtest_main
 )
 
 set_target_properties(TestRunner PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../bin/tests"
 )
 
-# Copy SDL3.dll next to TestRunner.exe so it can load SDL at runtime
-add_custom_command(TARGET TestRunner POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    $<TARGET_FILE:SDL3-shared>
-    $<TARGET_FILE_DIR:TestRunner>
-)
+add_test(NAME TestRunner COMMAND TestRunner)

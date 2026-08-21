@@ -1,7 +1,9 @@
-// src/test_stub.cpp — provides run_tests() so main.cpp compiles standalone.
-// Real tests: bin/tests/TestRunner.exe (GTest, built from tests/CMakeLists.txt).
-#include <iostream>
+// src/test_stub.cpp — provides run_tests() returning gtest exit code.
+#include <gtest/gtest.h>
 
-void run_tests() {
-    std::cout << "[Tests] Stub: run `bin/tests/TestRunner.exe` for full GTest suite.\n";
+int run_tests() {
+    int argc = 0;
+    char** argv = nullptr;
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

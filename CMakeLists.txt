@@ -11,11 +11,14 @@ endif()
 
 add_compile_definitions(_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH)
 
-# --- Subdirectories ---
-add_subdirectory(external/SDL)
-add_subdirectory(external/json)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_VERIFY_INTERFACE_HEADER_SETS OFF)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
+# --- SDL3 from submodule ---
+add_subdirectory(external/SDL)
+
+# --- GoogleTest from submodule ---
+add_subdirectory(external/googletest)
 
 # --- Main app ---
 add_executable(DiffusionApp
@@ -26,26 +29,26 @@ add_executable(DiffusionApp
 
 target_include_directories(DiffusionApp PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/external/SDL/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/external/json/include"
 )
 
 target_link_libraries(DiffusionApp PRIVATE
-    SDL3-shared
+    SDL3::SDL3
+    GTest::gtest
 )
 
-add_custom_command(TARGET DiffusionApp POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    $<TARGET_FILE:SDL3-shared>
-    $<TARGET_FILE_DIR:DiffusionApp>
+set_target_properties(DiffusionApp PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
 )
 
 # --- Unit tests ---
 enable_testing()
 add_subdirectory(tests)
 
+# --- Compiler warnings ---
 if(MSVC)
     target_compile_options(DiffusionApp PRIVATE /W4 /permissive- /Zc:__cplusplus)
+    target_compile_options(TestRunner PRIVATE /W4 /permissive- /Zc:__cplusplus)
 else()
     target_compile_options(DiffusionApp PRIVATE -Wall -Wextra -pedantic -O3)
+    target_compile_options(TestRunner PRIVATE -Wall -Wextra -pedantic -O3)
 endif()

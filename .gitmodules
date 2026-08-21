@@ -1,15 +1,6 @@
-[submodule "build/external/nlohmann"]
-	path = build/external/nlohmann
-	url = https://github.com/nlohmann/json.git
-[submodule "external/json"]
-	path = external/json
-	url = https://github.com/nlohmann/json.git
-[submodule "external/CppLogiMake"]
-	path = external/CppLogiMake
-	url = https://github.com/cschladetsch/CppLogiMake.git
 [submodule "external/SDL"]
 	path = external/SDL
 	url = https://github.com/libsdl-org/SDL.git
-[submodule "external/CppLmmModelStore"]
-	path = external/CppLmmModelStore
-	url = https://github.com/cschladetsch/CppLmmModelStore.git
+[submodule "external/googletest"]
+	path = external/googletest
+	url = https://github.com/google/googletest.git
