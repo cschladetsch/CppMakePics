@@ -344,11 +344,19 @@ int main(int argc, char* argv[]) {
         ImGui::Separator();
 
         if (image_tex) {
-            ImVec2 img_size(static_cast<float>(win_w) - 20.0f,
-                            static_cast<float>(win_h) - 100.0f);
-            // Clamp to reasonable size
-            if (img_size.x > 1200) img_size.x = 1200;
-            if (img_size.y > 900) img_size.y = 900;
+            float tex_w = 0.0f, tex_h = 0.0f;
+            SDL_GetTextureSize(image_tex, &tex_w, &tex_h);
+            float tex_ratio = tex_w > 0.0f && tex_h > 0.0f ? tex_w / tex_h : 1.0f;
+            float avail_w = static_cast<float>(win_w) - 20.0f;
+            float avail_h = static_cast<float>(win_h) - 100.0f;
+            ImVec2 img_size;
+            if (avail_w / avail_h > tex_ratio) {
+                img_size.y = avail_h;
+                img_size.x = img_size.y * tex_ratio;
+            } else {
+                img_size.x = avail_w;
+                img_size.y = img_size.x / tex_ratio;
+            }
             ImGui::Image(image_tex, img_size);
         } else {
             ImGui::TextColored(ImVec4(1, 0.3, 0.3, 1), "No image loaded");
