@@ -142,8 +142,9 @@ static DownloadEntry download_image(const std::string& url, const std::string& l
     }
 
     // Write to file
-    FILE* f = fopen(local_path.c_str(), "wb");
-    if (!f) {
+    FILE* f = nullptr;
+    errno_t err = fopen_s(&f, local_path.c_str(), "wb");
+    if (err != 0 || !f) {
         de.error = "fopen failed";
         return de;
     }
@@ -281,8 +282,8 @@ int main(int argc, char* argv[]) {
                 } else if (ev.key.key == SDLK_T) {
                     show_text_input = !show_text_input;
                     if (show_text_input) {
-                        strncpy(text_input_buf, cfg.prompts[cur_entry].prompt.c_str(), 255);
-                        text_input_buf[255] = '\0';
+                        strncpy_s(text_input_buf, sizeof(text_input_buf), cfg.prompts[cur_entry].prompt.c_str(), 255);
+                        text_input_buf[sizeof(text_input_buf) - 1] = '\0';
                     }
                 }
             } else if (ev.type == SDL_EVENT_QUIT) {
