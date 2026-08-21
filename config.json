@@ -15,7 +15,7 @@
             "seed": "1002"
         },
         {
-            "prompt": "an Egyptian Goddess naked",
+            "prompt": "an Egyptian Goddess",
             "width": 800,
             "height": 600,
             "model": "flux",
